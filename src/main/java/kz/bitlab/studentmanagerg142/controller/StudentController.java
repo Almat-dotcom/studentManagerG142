@@ -1,7 +1,7 @@
 package kz.bitlab.studentmanagerg142.controller;
 
+import kz.bitlab.studentmanagerg142.db.DB;
 import kz.bitlab.studentmanagerg142.model.Student;
-import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,20 +13,20 @@ import java.util.List;
 
 @Controller
 public class StudentController {
-    List<Student> list = new ArrayList<>();
-    private Long id = 1L;
-
-    public StudentController() {
-        list.add(new Student(id++, "Anton", "M", 100, "A"));
-        list.add(new Student(id++, "Rauan", "M", 100, "A"));
-        list.add(new Student(id++, "Bagzhan", "M", 100, "A"));
-        list.add(new Student(id++, "Aizere", "M", 100, "A"));
-        list.add(new Student(id++, "Daniyar", "M", 100, "A"));
-    }
+    DB db = new DB();
 
     @GetMapping("/")
-    public String start(Model model) {
-        model.addAttribute("students", list);
+    public String start(Model model,
+                        @RequestParam(name = "search_name", required = false) String searchName) {
+        if (searchName != null) {
+            List<Student> filtered;
+            filtered = db.getAll().stream()
+                    .filter(e -> e.getName().toLowerCase().contains(searchName.toLowerCase()))
+                    .toList();
+            model.addAttribute("students", filtered);
+        } else {
+            model.addAttribute("students", db.getAll());
+        }
         return "students";
     }
 
@@ -39,23 +39,21 @@ public class StudentController {
     public String addStudentPost(@RequestParam(name = "name") String name,
                                  @RequestParam(name = "surname") String surname,
                                  @RequestParam(name = "exam") Integer exam) {
-        Student st = new Student();
-        st.setName(name);
-        st.setSurname(surname);
-        st.setExam(exam);
-        st.setId(id++);
-        if (exam < 25) {
-            st.setMark("F");
-        } else if (exam < 50 && exam >= 25) {
-            st.setMark("D");
-        } else if (exam >= 50 && exam < 70) {
-            st.setMark("C");
-        } else if (exam >= 70 && exam < 90) {
-            st.setMark("B");
-        } else {
-            st.setMark("A");
-        }
-        list.add(st);
+        Student st = Student.builder()
+                .name(name)
+                .surname(surname)
+                .exam(exam)
+                .mark(getMark(exam))
+                .build();
+        db.addStudent(st);
         return "redirect:/";
+    }
+
+    private String getMark(Integer exam) {
+        if (exam < 25) return "F";
+        else if (exam < 50 && exam >= 25) return "D";
+        else if (exam >= 50 && exam < 70) return "C";
+        else if (exam >= 70 && exam < 90) return "B";
+        else return "A";
     }
 }
